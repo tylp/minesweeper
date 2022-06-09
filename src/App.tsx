@@ -1,45 +1,33 @@
 import { table } from 'console';
-import React, { ChangeEvent, useState } from 'react';
+import React, { ChangeEvent, useEffect, useState } from 'react';
 import './App.css';
+import {emit, listen} from '@tauri-apps/api/event';
 
 interface Tile {
-	x: number;
-	y: number;
-	value: "1" | "2" | "3" | "4" | "bomb" | "flag";
-	clicked: boolean;
+	x: number,
+	y: number,
+	value: number,
+	clicked: boolean
 }
 
 function App() {
 
+	const [tiles, setTiles] = useState<Array<Tile>>([]);
 	const [boardSise, setBoardSize] = useState<number>(10);
-	const [data, setData] = useState<Array<Tile>>([]);
 
 	function handleBoardSize(event: ChangeEvent<HTMLInputElement>) {
 		setBoardSize(+event.target.value);
-		generateData();
+		emit("board-size", {
+			boardSize: boardSise
+		});
 	}
 
-	function displayTable() {
-		generateData();
-	}
-
-	/**
-	 * Generate data for each of the tiles in the board.
-	 */
-	function generateData() {
-
-		let data: Array<Tile> = [];
-
-		for (let row = 0; row < boardSise; row++) {
-			for (let col = 0; col < boardSise; col++) {
-				data.push({
-					x: col,
-					y: row,
-					value: "flag",
-					clicked: false
-				});
-			}
-		}
+	function renderTable() {
+		return(
+			<table>
+				
+			</table>
+		);
 	}
 
 	return (
@@ -47,15 +35,9 @@ function App() {
 			<div className="header">
 				<input type={"number"} placeholder="Board size" value={boardSise} onChange={handleBoardSize}></input>
 			</div>
-			<table className='board'>
-				<tr>
-				{
-					data.map((tile: Tile) =>
-						<td>{tile.value}</td>
-					)
-				}
-				</tr>
-			</table>
+			<div className='board'>
+				
+			</div>
 		</div>
 	);
 }

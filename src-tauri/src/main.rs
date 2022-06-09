@@ -4,6 +4,8 @@
 )]
 
 use rand::Rng;
+use tauri::State;
+use tauri::Manager;
 
 #[derive(Debug)]
 enum TileValue {
@@ -27,6 +29,14 @@ struct Board {
 
 fn main() {
 	tauri::Builder::default()
+		.setup(|app| {
+			let id = app.listen_global("board-size", |event| {
+				println!("Board size: {:?}", event.payload());
+			});
+
+			// app.unlisten(id);
+			Ok(())
+		})
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");
 
