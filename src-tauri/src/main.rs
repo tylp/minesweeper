@@ -6,8 +6,9 @@
 use rand::Rng;
 use tauri::State;
 use tauri::Manager;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 enum TileValue {
 	BOMB,
 	FLAG,
@@ -15,6 +16,7 @@ enum TileValue {
 	EMPTY
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 struct Tile {
 	x: u16,
 	y: u16,
@@ -22,36 +24,35 @@ struct Tile {
 	clicked: bool
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 struct Board {
 	size: u16,
 	tiles: Vec<Tile>
 }
 
 fn main() {
-	tauri::Builder::default()
-		.setup(|app| {
-			let id = app.listen_global("board-size", |event| {
-				println!("Board size: {:?}", event.payload());
-			});
 
-			// app.unlisten(id);
-			Ok(())
-		})
+	let board: Board = Board {
+		size: 0,
+		tiles: Vec::new()
+	};
+
+	tauri::Builder::default()
+		.invoke_handler(tauri::generate_handler![
+			init_board,
+			tile_clicked
+		])
+		.manage(board)
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");
-
-	let mut board: Board = init_board(10);
-
-	println!("Initializing empty board...");
-	print_board(&board);
-	init_board_bombs(&mut board, 0.2);
-	print_board(&board);
 }
 
 /**
  * Generate the full board.
  */
-fn init_board(board_size: u16) -> Board {
+#[tauri::command]
+fn init_board(boardState: State<Board>, board_size: u16, bombs_density: f32) -> Result<Board, String> {
+
 	let mut board = Board {
 		size: board_size,
 		tiles: Vec::new()
@@ -72,15 +73,7 @@ fn init_board(board_size: u16) -> Board {
 		}
 	}
 
-	return board;
-}
-
-/**
- * Randomly place bombs accross the board.
- * Density represents the percentage of bombs among the tiles.
- */
-fn init_board_bombs(board: &mut Board, density: f32) {
-	let nbombs = u16::pow(board.size, 2) as f32 * density;
+	let nbombs = u16::pow(board.size, 2) as f32 * bombs_density;
 	let mut rng = rand::thread_rng();
 
 	println!("Putting {} bombs among {} tiles.", nbombs, u16::pow(board.size, 2));
@@ -94,6 +87,22 @@ fn init_board_bombs(board: &mut Board, density: f32) {
 		board.tiles.iter_mut().filter(|tile| tile.x == rand_x && tile.y == rand_y)
 			.for_each(|mut match_tile| match_tile.value = TileValue::BOMB);
 	}
+
+	println!("Initialized the board.");
+	print_board(&board);
+
+	// Update the state
+
+	Ok(board)
+}
+
+#[tauri::command]
+fn tile_clicked(state: State<'_, Board>, tile: Tile) -> Result<(), String> {
+	
+	println!("click");
+
+	let mut res = "clicked";
+	Ok(())
 }
 
 /**
