@@ -81,6 +81,7 @@ function App() {
 
 	function handleTileClick(tile: ITile) {
 		console.log(`Clicked on tile [${tile.x};${tile.y}]`);
+		invoke('tile_clicked', {})
 	}
 
 	return (
