@@ -15,7 +15,8 @@ interface ITile {
 	x: number,
 	y: number,
 	value: string,
-	clicked: boolean
+	clicked: boolean,
+	bombs: number
 }
 
 interface IBoard {
@@ -31,14 +32,14 @@ const darkTheme = createTheme({
 
 function App() {
 
-	const [tiles, setTiles] = useState<Array<ITile>>([]);
 	const [rows, setRows] = useState<Array<Array<ITile>>>([]);
 	const [boardSize, setBoardSize] = useState<number>(10);
 	const [bombsDensity, setBombsDensity] = useState<number>(0.2);
+	const [lost, setLost] = useState<boolean>(false);
 
 	useEffect(() => {
 		// initBoard();
-	});
+	}, []);
 
 	function handleBoardSize(event: ChangeEvent<HTMLInputElement>) {
 		setBoardSize(+event.target.value);
@@ -48,40 +49,44 @@ function App() {
 		setBombsDensity(+event.target.value);
 	}
 
-	function initBoard() {
+	async function initBoard() {
 		// First clear the board
 		clearBoard();
+		setLost(false);
 
-		// Then, invoke rust api
-		invoke('init_board', { boardSize: boardSize, bombsDensity: bombsDensity }).then((result) => {
-			let board = result as IBoard;
-			setTiles(board.tiles);
-			processTiles();
-		}).catch((error) => {
-			console.log(error);
-		})
+		try {
+			const board: IBoard = await invoke('init_board', { boardSize: boardSize, bombsDensity: bombsDensity }) as IBoard;
+			processTiles(board);
+		} catch (err) {
+			console.error(err);
+		}
 	}
 
 	function clearBoard() {
-		setTiles([]);
 		setRows([]);
 	}
 
 	/**
 	 * Split the tiles into multiple rows
 	 */
-	function processTiles() {
+	async function processTiles(board: IBoard) {
 
-		for (let row = 0; row < boardSize; row ++) {
+		for (let row = 0; row < board.size; row ++) {
 			// Find the tiles with y = 0
-			const filteredTiles = tiles.filter(tile => tile.x === row);
+			const filteredTiles = board.tiles.filter(tile => tile.x === row);
 			setRows(current => [...current, filteredTiles]);
 		}
 	}
 
-	function handleTileClick(tile: ITile) {
-		console.log(`Clicked on tile [${tile.x};${tile.y}]`);
-		invoke('tile_clicked', {})
+	async function handleTileClick(tile: ITile) {
+		try {
+			const board: IBoard = await invoke('tile_clicked', {tile: tile});
+			clearBoard();
+			processTiles(board);
+		} catch (err) {
+			setLost(true);
+			clearBoard();
+		}
 	}
 
 	return (
@@ -99,6 +104,9 @@ function App() {
 			</Box>
 			<Box className="container">
 				{
+					lost ? <p>LOOOOOST !!!!!!!!!!!!!</p> : ""
+				}
+				{
 					rows.map((row, index) => {
 						return(
 							<Box key={`row${index}`} className="col">
@@ -108,10 +116,12 @@ function App() {
 											<div
 												onClick={() => handleTileClick(tile)}
 												key={`tile${tile.x}${tile.y}`} 
-												className={`tile ${tile.value === "BOMB" ? "bkg-red" : ""}`}
+												className={`tile`}
 											>
-												<Typography variant='caption'>{tile.value.charAt(0)}</Typography>
-												
+												<Typography variant='caption'>
+													{/* {tile.clicked ? tile.bombs : ''} */}
+													{tile.bombs + "_" + tile.value.charAt(0)}
+												</Typography>
 											</div>
 										)
 									})
